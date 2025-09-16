@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>N-9802 Drone Controller</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Courier New", monospace;
+        background: linear-gradient(135deg, #1a0d2e, #2d1b3d, #1a0d2e);
+        color: #e0a5ff;
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      /* Animated background particles */
+      .particles {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+      }
+
+      .particle {
+        position: absolute;
+        background: #8b5cf6;
+        border-radius: 50%;
+        opacity: 0.3;
+        animation: float 6s infinite linear;
+      }
+
+      @keyframes float {
+        0% {
+          transform: translateY(100vh) rotate(0deg);
+          opacity: 0;
+        }
+        10% {
+          opacity: 0.3;
+        }
+        90% {
+          opacity: 0.3;
+        }
+        100% {
+          transform: translateY(-100px) rotate(360deg);
+          opacity: 0;
+        }
+      }
+
+      /* Login Screen */
+      .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        flex-direction: column;
+      }
+
+      .login-box {
+        background: rgba(46, 27, 61, 0.8);
+        border: 2px solid #8b5cf6;
+        border-radius: 15px;
+        padding: 40px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+        animation: pulse-glow 3s infinite;
+        text-align: center;
+      }
+
+      @keyframes pulse-glow {
+        0%,
+        100% {
+          box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+        }
+        50% {
+          box-shadow: 0 0 50px rgba(139, 92, 246, 0.6);
+        }
+      }
+
+      .login-box h1 {
+        color: #c084fc;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+        text-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
+      }
+
+      .input-group {
+        margin-bottom: 20px;
+      }
+
+      .input-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #e0a5ff;
+        font-weight: bold;
+      }
+
+      .input-group input {
+        width: 100%;
+        padding: 12px;
+        background: rgba(26, 13, 46, 0.8);
+        border: 1px solid #8b5cf6;
+        border-radius: 8px;
+        color: #e0a5ff;
+        font-family: "Courier New", monospace;
+        font-size: 16px;
+        transition: all 0.3s ease;
+      }
+
+      .input-group input:focus {
+        outline: none;
+        border-color: #c084fc;
+        box-shadow: 0 0 15px rgba(192, 132, 252, 0.5);
+      }
+
+      .login-btn {
+        background: linear-gradient(45deg, #8b5cf6, #c084fc);
+        border: none;
+        padding: 15px 30px;
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        margin-top: 20px;
+      }
+
+      .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4);
+      }
+
+      .error-message {
+        color: #ff6b9d;
+        margin-top: 15px;
+        font-weight: bold;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: all 0.3s ease;
+      }
+
+      .error-message.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Controller Interface */
+      .controller-container {
+        display: none;
+        padding: 20px;
+        height: 100vh;
+        flex-direction: column;
+        justify-content: space-between;
+        animation: fadeInUp 0.8s ease;
+        overflow-y: auto; /* Allow scrolling on smaller devices */
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .header h1 {
+        color: #c084fc;
+        font-size: 2.5em;
+        text-shadow: 0 0 15px rgba(192, 132, 252, 0.7);
+        margin-bottom: 10px;
+      }
+
+      .status {
+        color: #22c55e;
+        font-size: 1.2em;
+        text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .disconnect-btn {
+        background: linear-gradient(45deg, #dc2626, #ef4444);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        padding: 10px 20px;
+        font-family: "Courier New", monospace;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        margin-left: 20px;
+      }
+
+      .disconnect-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(220, 38, 38, 0.4);
+      }
+
+      /* Camera styles */
+      .camera-screen {
+        width: 100%;
+        max-width: 650px;
+        min-height: 300px;
+        background-color: #000;
+        border: 2px solid #8b5cf6;
+        border-radius: 10px;
+        margin: 15px auto;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+      }
+
+      .camera-content {
+        height: 100%;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 15px;
+        color: #e0a5ff;
+        font-size: 14px;
+        text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+      }
+
+      .camera-info {
+        text-align: left;
+      }
+
+      .camera-status {
+        text-align: right;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      .rec-indicator {
+        width: 10px;
+        height: 10px;
+        background-color: #ef4444;
+        border-radius: 50%;
+        box-shadow: 0 0 8px #ef4444;
+        animation: pulse-red 1s infinite;
+        display: none;
+      }
+
+      .camera-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          circle,
+          transparent 70%,
+          rgba(139, 92, 246, 0.2) 100%
+        );
+      }
+
+      .camera-crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 50px;
+        height: 50px;
+        border: 1px solid #c084fc;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 10px rgba(192, 132, 252, 0.7);
+      }
+
+      .camera-crosshair::before,
+      .camera-crosshair::after {
+        content: "";
+        position: absolute;
+        background-color: #c084fc;
+      }
+
+      .camera-crosshair::before {
+        width: 100%;
+        height: 1px;
+        top: 50%;
+        left: 0;
+      }
+
+      .camera-crosshair::after {
+        width: 1px;
+        height: 100%;
+        top: 0;
+        left: 50%;
+      }
+
+      .controls-grid {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        gap: 30px;
+        max-width: 1200px;
+        margin: 0 auto;
+        justify-content: center;
+        align-items: start;
+      }
+
+      .control-section {
+        background: rgba(46, 27, 61, 0.6);
+        border: 1px solid #8b5cf6;
+        border-radius: 15px;
+        padding: 25px;
+        backdrop-filter: blur(10px);
+      }
+
+      .control-section h3 {
+        color: #c084fc;
+        margin-bottom: 20px;
+        font-size: 1.4em;
+        text-align: center;
+        text-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
+      }
+
+      .movement-controls {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin: 20px 0;
+      }
+
+      .control-btn {
+        background: linear-gradient(45deg, #2d1b3d, #3d2a4d);
+        border: 2px solid #8b5cf6;
+        border-radius: 10px;
+        color: #e0a5ff;
+        padding: 15px;
+        font-family: "Courier New", monospace;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .control-btn:hover {
+        background: linear-gradient(45deg, #3d2a4d, #4d3a5d);
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+        transform: translateY(-2px);
+      }
+
+      .control-btn.active {
+        background: linear-gradient(45deg, #8b5cf6, #c084fc);
+        color: white;
+        box-shadow: 0 0 25px rgba(139, 92, 246, 0.6);
+        transform: scale(0.95);
+      }
+
+      .control-btn::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        transition: all 0.3s ease;
+        transform: translate(-50%, -50%);
+      }
+
+      .control-btn.pressed::before {
+        width: 100%;
+        height: 100%;
+      }
+
+      .empty {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .up {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .left {
+        grid-column: 1;
+        grid-row: 2;
+      }
+      .down {
+        grid-column: 2;
+        grid-row: 2;
+      }
+      .right {
+        grid-column: 3;
+        grid-row: 2;
+      }
+
+      .altitude-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .action-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .action-btn {
+        background: linear-gradient(45deg, #7c3aed, #a855f7);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        padding: 15px;
+        font-family: "Courier New", monospace;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+      }
+
+      .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(124, 58, 237, 0.4);
+      }
+
+      .action-btn.recording {
+        background: linear-gradient(45deg, #dc2626, #ef4444);
+        animation: pulse-red 1s infinite;
+      }
+
+      .action-btn.active-mode {
+        background: linear-gradient(45deg, #059669, #10b981);
+        animation: pulse-green 1s infinite;
+      }
+
+      @keyframes pulse-green {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+
+      @keyframes pulse-red {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+
+      .telemetry {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(46, 27, 61, 0.8);
+        border: 1px solid #8b5cf6;
+        border-radius: 10px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+        min-width: 200px;
+      }
+
+      .key-indicator {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(46, 27, 61, 0.9);
+        border: 1px solid #8b5cf6;
+        border-radius: 10px;
+        padding: 15px;
+        color: #e0a5ff;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+      }
+
+      .telemetry h4 {
+        color: #c084fc;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+
+      .telemetry-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        color: #e0a5ff;
+      }
+
+      .value {
+        color: #22c55e;
+        font-weight: bold;
+      }
+
+      .responsive-mobile {
+        display: none;
+      }
+
+      @media (max-width: 1200px) {
+        .controls-grid {
+          grid-template-columns: 1fr;
+          gap: 20px;
+          margin: 0 10px;
+        }
+
+        .telemetry,
+        .key-indicator {
+          position: relative;
+          margin: 20px 0;
+          left: auto;
+          right: auto;
+          top: auto;
+          bottom: auto;
+        }
+
+        .controller-container {
+          justify-content: flex-start;
+        }
+
+        .header {
+          margin-bottom: 15px;
+        }
+      }
+
+      /* Welcome Screen */
+      .welcome-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background: linear-gradient(135deg, #1a0d2e, #2d1b3d, #1a0d2e);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        animation: fadeOut 3s ease forwards;
+      }
+
+      .welcome-content {
+        text-align: center;
+        color: #c084fc;
+        font-size: 3em;
+        font-weight: bold;
+        text-shadow: 0 0 30px rgba(192, 132, 252, 0.8);
+        animation: welcomeGlow 2s ease-in-out;
+      }
+
+      /* Disconnect Screen */
+      .disconnect-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background: linear-gradient(135deg, #1a0d2e, #2d1b3d, #1a0d2e);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        animation: fadeOut 3s ease forwards;
+      }
+
+      .disconnect-content {
+        text-align: center;
+        color: #ef4444;
+        font-size: 2.5em;
+        font-weight: bold;
+        text-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
+        animation: disconnectGlow 2s ease-in-out;
+      }
+
+      @keyframes disconnectGlow {
+        0%,
+        100% {
+          text-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
+          transform: scale(1);
+        }
+        50% {
+          text-shadow: 0 0 50px rgba(239, 68, 68, 1);
+          transform: scale(1.05);
+        }
+      }
+
+      @keyframes welcomeGlow {
+        0%,
+        100% {
+          text-shadow: 0 0 30px rgba(192, 132, 252, 0.8);
+          transform: scale(1);
+        }
+        50% {
+          text-shadow: 0 0 50px rgba(192, 132, 252, 1);
+          transform: scale(1.05);
+        }
+      }
+
+      @keyframes fadeOut {
+        0% {
+          opacity: 1;
+        }
+        80% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(192, 132, 252, 0.3);
+        border-radius: 50%;
+        border-top-color: #c084fc;
+        animation: spin 1s ease-in-out infinite;
+        margin-left: 10px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .landing-status {
+        position: fixed;
+        bottom: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(46, 27, 61, 0.9);
+        border: 2px solid #8b5cf6;
+        border-radius: 10px;
+        padding: 20px 40px;
+        color: #c084fc;
+        font-size: 2em;
+        font-weight: bold;
+        text-shadow: 0 0 15px rgba(192, 132, 252, 0.7);
+        z-index: 999;
+        display: none;
+        animation: pulse-glow 2s infinite;
+      }
+
+      .landing-status.success {
+        color: #22c55e;
+        border-color: #22c55e;
+        text-shadow: 0 0 15px rgba(34, 197, 94, 0.7);
+        animation: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="particles"></div>
+
+    <div class="disconnect-screen" id="disconnectScreen">
+      <div class="disconnect-content">Drone Disconnected Successfully</div>
+    </div>
+
+    <div class="welcome-screen" id="welcomeScreen">
+      <div class="welcome-content">Welcome to DRONE - X</div>
+    </div>
+
+    <div class="login-container" id="loginScreen">
+      <div class="login-box">
+        <h1>DRONE LOGIN ACCESS</h1>
+        <div class="input-group">
+          <label for="droneId">Drone Serial Number</label>
+          <input
+            type="text"
+            id="droneId"
+            placeholder="Enter drone ID..."
+            maxlength="10"
+          />
+        </div>
+        <button class="login-btn" id="connectBtn">CONNECT</button>
+        <br />
+        <p style="margin-top: 20px">
+          Made by Charles Manalo FOUNDER of Drone - X
+        </p>
+        <div class="error-message" id="errorMessage">No drone found</div>
+      </div>
+    </div>
+
+    <div class="controller-container" id="controllerScreen">
+      <div class="header">
+        <h1>N-9802 DRONE CONTROLLER</h1>
+        <div class="status">
+          <span>🟢 CONNECTED - READY FOR FLIGHT</span>
+          <button class="disconnect-btn" id="disconnectBtn">DISCONNECT</button>
+        </div>
+      </div>
+
+      <div class="camera-screen">
+        <div class="camera-content">
+          <div class="camera-info">
+            CAM-01 | 1080p | 30fps<br />
+            ALT: <span id="camAltitude">15.2m</span>
+          </div>
+          <div class="camera-status">
+            <div class="rec-indicator" id="recIndicator"></div>
+            <span id="camStatus">LIVE</span>
+          </div>
+          <div class="camera-overlay"></div>
+          <div class="camera-crosshair"></div>
+          <div style="text-align: center">
+            📹 DRONE CAMERA VIEW<br />
+            <small style="opacity: 0.7">Scanning terrain...</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-grid">
+        <div class="control-section">
+          <h3>MOVEMENT</h3>
+          <div class="movement-controls">
+            <div class="empty"></div>
+            <button class="control-btn up" data-key="w">↑<br />W</button>
+            <div class="empty"></div>
+            <button class="control-btn left" data-key="a">←<br />A</button>
+            <button class="control-btn down" data-key="s">↓<br />S</button>
+            <button class="control-btn right" data-key="d">→<br />D</button>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <h3>ALTITUDE & ROTATION</h3>
+          <div class="altitude-controls">
+            <button class="control-btn" data-key="ArrowUp">
+              ASCEND ↗<br />↑
+            </button>
+            <button class="control-btn" data-key="ArrowDown">
+              DESCEND ↙<br />↓
+            </button>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <h3>ACTIONS</h3>
+          <div class="action-controls">
+            <button class="action-btn" id="recordBtn" data-key="r">
+              🔴 RECORD (R)
+            </button>
+            <button class="action-btn" id="landBtn" data-key="o">
+              🛬 AUTO LAND (O)
+            </button>
+            <button class="action-btn" id="followBtn" data-key="p">
+              👤 FOLLOW MODE (P)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="landing-status" id="landingStatus">
+        <div id="landingMessage">LANDING...</div>
+      </div>
+
+      <div class="telemetry">
+        <h4>📊 TELEMETRY</h4>
+        <div class="telemetry-item">
+          <span>Battery:</span>
+          <span class="value" id="battery">87%</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Altitude:</span>
+          <span class="value" id="altitude">15.2m</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Speed:</span>
+          <span class="value" id="speed">12.5 km/h</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Signal:</span>
+          <span class="value" id="signal">Strong</span>
+        </div>
+      </div>
+
+      <div class="key-indicator">
+        <div>Press keys to control:</div>
+        <div>WASD - Movement</div>
+        <div>↑↓ - Altitude</div>
+        <div>R - Record | O - Land | P - Follow</div>
+      </div>
+    </div>
+
+    <script>
+      class DroneController {
+        constructor() {
+          this.isRecording = false;
+          this.isLanding = false;
+          this.isFollowing = false;
+          this.telemetryData = {
+            battery: 87,
+            altitude: 15.2,
+            speed: 12.5,
+            signal: "Strong",
+          };
+          this.activeKeys = new Set();
+          this.lastUpdate = Date.now();
+          this.altitudeInterval = null;
+          this.landingTimeout = null;
+          this.init();
+        }
+
+        init() {
+          this.createParticles();
+          this.setupEventListeners();
+          this.startTelemetryUpdates();
+        }
+
+        createParticles() {
+          const particlesContainer = document.querySelector(".particles");
+          for (let i = 0; i < 20; i++) {
+            const particle = document.createElement("div");
+            particle.className = "particle";
+            particle.style.left = Math.random() * 100 + "%";
+            particle.style.width = particle.style.height =
+              Math.random() * 4 + 2 + "px";
+            particle.style.animationDelay = Math.random() * 6 + "s";
+            particle.style.animationDuration = Math.random() * 3 + 4 + "s";
+            particlesContainer.appendChild(particle);
+          }
+        }
+
+        setupEventListeners() {
+          const connectBtn = document.getElementById("connectBtn");
+          const droneIdInput = document.getElementById("droneId");
+          const recordBtn = document.getElementById("recordBtn");
+          const landBtn = document.getElementById("landBtn");
+          const followBtn = document.getElementById("followBtn");
+          const disconnectBtn = document.getElementById("disconnectBtn");
+
+          connectBtn.addEventListener("click", () => this.handleLogin());
+          droneIdInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") this.handleLogin();
+          });
+
+          recordBtn.addEventListener("click", () => this.toggleRecording());
+          landBtn.addEventListener("click", () => this.toggleAutoLand());
+          followBtn.addEventListener("click", () => this.toggleFollowMode());
+          disconnectBtn.addEventListener("click", () => this.disconnect());
+
+          // Keyboard controls
+          document.addEventListener("keydown", (e) => this.handleKeyDown(e));
+          document.addEventListener("keyup", (e) => this.handleKeyUp(e));
+
+          // Button controls
+          document
+            .querySelectorAll(".control-btn, .action-btn")
+            .forEach((btn) => {
+              btn.addEventListener("mousedown", () =>
+                this.handleButtonPress(btn)
+              );
+              btn.addEventListener("mouseup", () =>
+                this.handleButtonRelease(btn)
+              );
+              btn.addEventListener("mouseleave", () =>
+                this.handleButtonRelease(btn)
+              );
+            });
+        }
+
+        handleLogin() {
+          const droneId = document.getElementById("droneId").value.trim();
+          const errorMessage = document.getElementById("errorMessage");
+          const connectBtn = document.getElementById("connectBtn");
+
+          if (droneId === "N-9802") {
+            connectBtn.innerHTML = 'CONNECTING <div class="loading"></div>';
+            setTimeout(() => {
+              document.getElementById("loginScreen").style.display = "none";
+              document.getElementById("welcomeScreen").style.display = "flex";
+              setTimeout(() => {
+                document.getElementById("welcomeScreen").style.display = "none";
+                document.getElementById("controllerScreen").style.display =
+                  "flex";
+              }, 3000);
+            }, 1500);
+          } else {
+            errorMessage.classList.add("show");
+            setTimeout(() => errorMessage.classList.remove("show"), 3000);
+          }
+        }
+
+        handleKeyDown(e) {
+          if (
+            this.activeKeys.has(e.key) ||
+            document.getElementById("loginScreen").style.display !== "none"
+          )
+            return;
+
+          this.activeKeys.add(e.key);
+          const btn = document.querySelector(`[data-key="${e.key}"]`);
+          if (btn) {
+            btn.classList.add("active", "pressed");
+
+            // Start continuous altitude adjustment for arrow keys
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              this.startContinuousAltitude(e.key);
+            } else {
+              this.executeCommand(e.key);
+            }
+          }
+        }
+
+        handleKeyUp(e) {
+          this.activeKeys.delete(e.key);
+          const btn = document.querySelector(`[data-key="${e.key}"]`);
+          if (btn) {
+            btn.classList.remove("active", "pressed");
+          }
+
+          // Stop continuous altitude adjustment
+          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            this.stopContinuousAltitude();
+          }
+        }
+
+        handleButtonPress(btn) {
+          const key = btn.getAttribute("data-key");
+          if (key && !this.activeKeys.has(key)) {
+            btn.classList.add("active", "pressed");
+            this.activeKeys.add(key);
+
+            // Start continuous altitude adjustment for arrow keys
+            if (key === "ArrowUp" || key === "ArrowDown") {
+              this.startContinuousAltitude(key);
+            } else {
+              this.executeCommand(key);
+            }
+          }
+        }
+
+        handleButtonRelease(btn) {
+          const key = btn.getAttribute("data-key");
+          if (key) {
+            btn.classList.remove("active", "pressed");
+            this.activeKeys.delete(key);
+
+            // Stop continuous altitude adjustment
+            if (key === "ArrowUp" || key === "ArrowDown") {
+              this.stopContinuousAltitude();
+            }
+          }
+        }
+
+        executeCommand(key) {
+          const commands = {
+            w: () => this.move("forward"),
+            a: () => this.move("left"),
+            s: () => this.move("backward"),
+            d: () => this.move("right"),
+            ArrowUp: () => this.adjustAltitude("up"),
+            ArrowDown: () => this.adjustAltitude("down"),
+            r: () => this.toggleRecording(),
+            o: () => this.toggleAutoLand(),
+            p: () => this.toggleFollowMode(),
+          };
+
+          if (commands[key]) {
+            commands[key]();
+          }
+        }
+
+        move(direction) {
+          console.log(`🚁 Moving ${direction}`);
+          this.lastUpdate = Date.now();
+          this.telemetryData.speed = Math.min(
+            25,
+            this.telemetryData.speed + Math.random() * 2
+          );
+          this.telemetryData.battery = Math.max(
+            0,
+            this.telemetryData.battery - (0.01 + Math.random() * 0.02)
+          );
+          if (direction === "forward" || direction === "backward") {
+            this.telemetryData.altitude += (Math.random() - 0.5) * 0.2;
+          }
+          this.updateTelemetryDisplay();
+        }
+
+        adjustAltitude(direction) {
+          this.lastUpdate = Date.now();
+          const baseChange = direction === "up" ? 1.2 : -1.2;
+          const variation = (Math.random() - 0.5) * 0.4;
+          const change = baseChange + variation;
+          this.telemetryData.altitude = Math.max(
+            0,
+            this.telemetryData.altitude + change
+          );
+          this.telemetryData.speed = Math.max(
+            0,
+            this.telemetryData.speed + Math.abs(change) * 0.5
+          );
+          this.telemetryData.battery = Math.max(
+            0,
+            this.telemetryData.battery - Math.abs(change) * 0.02
+          );
+          console.log(
+            `🚁 Altitude: ${this.telemetryData.altitude.toFixed(1)}m`
+          );
+          this.updateTelemetryDisplay();
+        }
+
+        startContinuousAltitude(key) {
+          if (this.altitudeInterval) {
+            clearInterval(this.altitudeInterval);
+          }
+          this.altitudeInterval = setInterval(() => {
+            const direction = key === "ArrowUp" ? "up" : "down";
+            this.adjustAltitude(direction);
+          }, 100);
+          const direction = key === "ArrowUp" ? "up" : "down";
+          this.adjustAltitude(direction);
+        }
+
+        stopContinuousAltitude() {
+          if (this.altitudeInterval) {
+            clearInterval(this.altitudeInterval);
+            this.altitudeInterval = null;
+          }
+        }
+
+        toggleRecording() {
+          this.isRecording = !this.isRecording;
+          const recordBtn = document.getElementById("recordBtn");
+          const recIndicator = document.getElementById("recIndicator");
+          const camStatus = document.getElementById("camStatus");
+          if (this.isRecording) {
+            recordBtn.classList.add("recording");
+            recordBtn.innerHTML = "⏹️ STOP REC (R)";
+            recIndicator.style.display = "block";
+            camStatus.textContent = "REC";
+            console.log("🔴 Recording started");
+          } else {
+            recordBtn.classList.remove("recording");
+            recordBtn.innerHTML = "🔴 RECORD (R)";
+            recIndicator.style.display = "none";
+            camStatus.textContent = "LIVE";
+            console.log("⏹️ Recording stopped");
+          }
+        }
+
+        toggleAutoLand() {
+          if (this.isLanding) return;
+          this.isLanding = true;
+          const landBtn = document.getElementById("landBtn");
+          const landingStatus = document.getElementById("landingStatus");
+          const landingMessage = document.getElementById("landingMessage");
+          landBtn.classList.add("active-mode");
+          landBtn.innerHTML = "🛬 LANDING... (O)";
+          landingStatus.style.display = "block";
+          landingMessage.textContent = "LANDING...";
+          console.log("🛬 Auto landing initiated");
+          this.landingTimeout = setTimeout(() => {
+            landingMessage.textContent = "LANDED SUCCESSFULLY";
+            landingStatus.classList.add("success");
+            this.telemetryData.altitude = 0;
+            this.telemetryData.speed = 0;
+            this.updateTelemetryDisplay();
+            console.log("🛬 Landing completed successfully");
+            setTimeout(() => {
+              landingStatus.style.display = "none";
+              landingStatus.classList.remove("success");
+              landBtn.classList.remove("active-mode");
+              landBtn.innerHTML = "🛬 AUTO LAND (O)";
+              this.isLanding = false;
+            }, 2000);
+          }, 5000);
+        }
+
+        toggleFollowMode() {
+          this.isFollowing = !this.isFollowing;
+          const followBtn = document.getElementById("followBtn");
+          if (this.isFollowing) {
+            followBtn.classList.add("active-mode");
+            followBtn.innerHTML = "👤 FOLLOWING (P)";
+            console.log("👤 Follow mode activated");
+            this.telemetryData.speed = 8.0 + Math.random() * 4;
+          } else {
+            followBtn.classList.remove("active-mode");
+            followBtn.innerHTML = "👤 FOLLOW MODE (P)";
+            console.log("👤 Follow mode deactivated");
+            this.telemetryData.speed = Math.max(
+              2,
+              this.telemetryData.speed - 3
+            );
+          }
+          this.updateTelemetryDisplay();
+        }
+
+        disconnect() {
+          console.log("🔌 Disconnecting from drone...");
+          this.stopContinuousAltitude();
+          if (this.landingTimeout) {
+            clearTimeout(this.landingTimeout);
+            this.landingTimeout = null;
+          }
+          document.getElementById("controllerScreen").style.display = "none";
+          document.getElementById("disconnectScreen").style.display = "flex";
+          setTimeout(() => {
+            this.isRecording = false;
+            this.isLanding = false;
+            this.isFollowing = false;
+            this.telemetryData = {
+              battery: 87,
+              altitude: 15.2,
+              speed: 12.5,
+              signal: "Strong",
+            };
+            document.getElementById("recordBtn").classList.remove("recording");
+            document.getElementById("recordBtn").innerHTML = "🔴 RECORD (R)";
+            document.getElementById("landBtn").classList.remove("active-mode");
+            document.getElementById("landBtn").innerHTML = "🛬 AUTO LAND (O)";
+            document
+              .getElementById("followBtn")
+              .classList.remove("active-mode");
+            document.getElementById("followBtn").innerHTML =
+              "👤 FOLLOW MODE (P)";
+            document.getElementById("landingStatus").style.display = "none";
+            document
+              .getElementById("landingStatus")
+              .classList.remove("success");
+            document.getElementById("recIndicator").style.display = "none";
+            document.getElementById("camStatus").textContent = "LIVE";
+            document.getElementById("droneId").value = "";
+            document.getElementById("connectBtn").innerHTML = "CONNECT";
+            document.getElementById("disconnectScreen").style.display = "none";
+            document.getElementById("loginScreen").style.display = "flex";
+          }, 3000);
+        }
+
+        updateTelemetry() {
+          const now = Date.now();
+          this.lastUpdate = now;
+          if (this.activeKeys.size > 0) {
+            this.telemetryData.battery = Math.max(
+              0,
+              this.telemetryData.battery - 0.05
+            );
+          } else {
+            this.telemetryData.battery = Math.max(
+              0,
+              this.telemetryData.battery - 0.01
+            );
+            this.telemetryData.speed = Math.max(
+              0,
+              this.telemetryData.speed - 0.1
+            );
+          }
+          this.telemetryData.altitude += (Math.random() - 0.5) * 0.1;
+          this.telemetryData.altitude = Math.max(
+            0,
+            this.telemetryData.altitude
+          );
+          this.telemetryData.speed += (Math.random() - 0.5) * 0.2;
+          this.telemetryData.speed = Math.max(0, this.telemetryData.speed);
+          this.updateTelemetryDisplay();
+        }
+
+        updateTelemetryDisplay() {
+          document.getElementById(
+            "battery"
+          ).textContent = `${this.telemetryData.battery.toFixed(0)}%`;
+          document.getElementById(
+            "altitude"
+          ).textContent = `${this.telemetryData.altitude.toFixed(1)}m`;
+          document.getElementById(
+            "speed"
+          ).textContent = `${this.telemetryData.speed.toFixed(1)} km/h`;
+          document.getElementById(
+            "camAltitude"
+          ).textContent = `${this.telemetryData.altitude.toFixed(1)}m`;
+          const signalValue =
+            this.telemetryData.battery > 50
+              ? "Strong"
+              : this.telemetryData.battery > 20
+              ? "Medium"
+              : "Weak";
+          document.getElementById("signal").textContent = signalValue;
+        }
+
+        startTelemetryUpdates() {
+          setInterval(() => this.updateTelemetry(), 1000);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        new DroneController();
+      });
+    </script>
+  </body>
+</html>
